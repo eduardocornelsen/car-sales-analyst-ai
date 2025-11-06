@@ -3,7 +3,7 @@ pandas
 plotly_express
 streamlit
 
-# AI requirements
+# Bibliotecas para a Aba de Bônus (IA)
 langchain
 langchain-google-genai
 langchain-experimental

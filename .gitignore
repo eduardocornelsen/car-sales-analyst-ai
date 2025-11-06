@@ -1,6 +1,9 @@
 # Ignore Windows 'Mark of the Web' files
 *:Zone.Identifier
 
+# Ignorar segredos do Streamlit
+.streamlit/secrets.toml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,9 @@
+#core
+pandas
+plotly_express
+streamlit
+
+# AI requirements
+langchain
+langchain-google-genai
+langchain-experimental

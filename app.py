@@ -343,12 +343,21 @@ if car_data is not None:
             st.warning("As bibliotecas do LangChain não foram instaladas corretamente. A Aba de IA está desativada.")
             st.info("Execute a reinstalação estruturada no terminal.")
 
-        elif "GOOGLE_API_KEY" not in st.secrets:
-            st.warning("Chave da API do Google não encontrada.")
-            st.write("Por favor, adicione sua `GOOGLE_API_KEY` ao arquivo `.streamlit/secrets.toml`.")
+        # Novo Bloco de Verificação: Apenas verificamos se a chave falha ao ser usada (try/except)
         else:
             try:
-                # Configure LLM
+                # 1. Tentar configurar o LLM
+                
+                # Usaremos um IF para verificar, mas com uma mensagem mais clara:
+                if st.secrets.get("GOOGLE_API_KEY") is None:
+                    # Se o .get() retornar None, significa que nem a variável de ambiente nem o arquivo existem.
+                    st.warning("Chave da API do Google não encontrada.")
+                    st.write("Por favor, adicione a variável de ambiente `GOOGLE_API_KEY` no Render.")
+                    # Paramos a execução do bloco try/except
+                    # Usamos st.stop() para interromper a execução do script
+                    st.stop() 
+                    
+                # A PARTIR DAQUI, ASSUMIMOS QUE st.secrets["GOOGLE_API_KEY"] FUNCIONA
                 model = ChatGoogleGenerativeAI(
                     model="gemini-2.5-flash", 
                     google_api_key=st.secrets["GOOGLE_API_KEY"],

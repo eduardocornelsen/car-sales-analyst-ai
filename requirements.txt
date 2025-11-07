@@ -2,8 +2,13 @@
 pandas
 plotly_express
 streamlit
+nbformat
 
-# Bibliotecas para a Aba de Bônus (IA)
+# Core LangChain e Google Gemini (o agente de execução)
 langchain
+langchain-core
+langchain-community
 langchain-google-genai
+
 langchain-experimental
+langgraph

@@ -1,6 +1,15 @@
-[server]
-headless = true
-port = 10000
-[browser]
-serverAddress = "0.0.0.0"
-serverPort = 10000
+[theme]
+# The main accent color for widgets.
+primaryColor = "#48D1CC"
+
+# Background color for the main content area.
+backgroundColor = "#0E1117"
+
+# Background color for the sidebar and most containers.
+secondaryBackgroundColor = "#262730"
+
+# Text color for the main content area.
+textColor = "#FAFAFA"
+
+# Font family for all text.
+font = "sans serif"

@@ -161,8 +161,66 @@ if car_data is not None:
                     with st.chat_message(message["role"]):
                         st.markdown(message["content"])
 
-                # User input
-                if user_input := st.chat_input("Ex: Qual o preço médio por fabricante?"):
+                # Initialize chat history
+                if "chat_messages_executor" not in st.session_state:
+                    st.session_state.chat_messages_executor = []
+
+                # Initialize button prompt
+                if 'button_prompt' not in st.session_state:
+                    st.session_state.button_prompt = None
+
+                # Function to handle button prompts
+                def set_button_prompt(prompt):
+                    st.session_state.button_prompt = prompt
+
+                # Display messages from history
+                for message in st.session_state.chat_messages_executor:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+                # Pre-defined question buttons
+                st.markdown("**💡 Perguntas Sugeridas:**")
+                col1, col2, col3 = st.columns(3)
+
+                # LINHA 1: PERGUNTAS SIMPLES
+                with col1:
+                    if st.button("📊 Preço médio por fabricante", key='btn_simple_1', use_container_width=True):
+                        set_button_prompt("Qual o preço médio por fabricante ('manufacturer')?")
+
+                with col2:
+                    if st.button("🚗 Top 5 Carros Mais Caros", key='btn_simple_2', use_container_width=True):
+                        set_button_prompt("Quais são os 5 carros mais caros? Liste o modelo, ano e preço.")
+
+                with col3:
+                    if st.button("📈 Média de Quilometragem por Condição", key='btn_simple_3', use_container_width=True):
+                        set_button_prompt("Qual a quilometragem média ('odometer') por condição ('condition') dos veículos?")
+
+                # LINHA 2: PERGUNTAS COMPLEXAS
+                col4, col5, col6 = st.columns(3)
+
+                with col4:
+                    if st.button("📈 Rank de Fabricantes por Preço", key='btn_complex_1', use_container_width=True):
+                        set_button_prompt("Calcule o preço médio por fabricante ('manufacturer') e ordene do mais caro para o mais barato.")
+
+                with col5:
+                    if st.button("📉 Análise de Depreciação", key='btn_complex_2', use_container_width=True):
+                        set_button_prompt("Qual a média do preço dividido pela idade (ano atual - 'model_year') para veículos em 'excelente' condição?")
+                    
+                with col6:
+                    if st.button("🚗 4x4 Mais Caros (Top 10)", key='btn_complex_3', use_container_width=True):
+                        set_button_prompt("Quais são os 10 carros mais caros com tração 4x4 ('is_4wd' = True)? Liste o preço e o modelo.")
+
+                st.divider()
+
+                # Get user input from button or chat
+                user_input = st.session_state.button_prompt or st.chat_input("Ex: Qual o preço médio por fabricante?")
+
+                # Clear button prompt after use
+                if st.session_state.button_prompt:
+                    st.session_state.button_prompt = None
+
+                # Process input
+                if user_input:
                     st.chat_message("user").markdown(user_input)
                     st.session_state.chat_messages_executor.append({"role": "user", "content": user_input})
 

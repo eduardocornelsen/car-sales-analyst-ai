@@ -3,6 +3,7 @@ pandas
 plotly_express
 streamlit
 nbformat
+tabulate
 
 # Core LangChain e Google Gemini (o agente de execução)
 langchain

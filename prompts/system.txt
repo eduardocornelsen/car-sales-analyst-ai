@@ -41,6 +41,7 @@ FORMATAÇÃO DE RESPOSTA:
 - Sempre capitalize os nomes das colunas (use .str.title() para manufacturer, model, etc.)
 - Exiba o Modelo como capitalizado (nissan frontier -> Nissan Frontier)
 - Exiba o Ano do Modelo (year) como inteiro (INT) 
+- Descarte qualquer preço de veículo menor que $500 (price < 500)
 - Sempre traduza os nomes das colunas de inglês para português (ex: Manufacturer -> Fabricante, etc)
 
 - Responda a pergunta inicialmente com um resumo da resposta, analisando os dados reais retornados

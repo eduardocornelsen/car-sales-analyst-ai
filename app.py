@@ -1,31 +1,41 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import io
+import sys
+from pathlib import Path
+from langchain.tools import tool
 
-# Tente importar as bibliotecas de IA. Se não funcionarem, a aba de IA apenas avisará o usuário.
+# --- Importações do LangChain (Tool Calling Agent) ---
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+    from langchain.agents import create_agent
+    from langchain.tools import tool
+    from langchain_core.prompts import ChatPromptTemplate
+    
     IA_DISPONIVEL = True
 except ImportError:
     IA_DISPONIVEL = False
+except Exception:
+    IA_DISPONIVEL = False
+
+# Read System Prompt from file
+system_prompt = Path("./prompts/system.txt").read_text()
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Dashboard de Vendas de Carros",
+    page_title="Analista Automotivo IA",
     page_icon="🚗",
     layout="wide"
 )
 
-# --- Carregar os Dados (com cache) ---
+# --- Carregar e Limpar os Dados (com cache) ---
 @st.cache_data
 def load_data():
     try:
         df = pd.read_csv('vehicles_us.csv')
-        # Pequena limpeza para o agente de IA funcionar melhor
-        df['model_year'] = df['model_year'].fillna(0).astype(int)
-        df['cylinders'] = df['cylinders'].fillna(0).astype(int)
-        df['odometer'] = df['odometer'].fillna(df['odometer'].mean())
+        df.dropna(subset=['price', 'odometer', 'condition', 'model_year', 'model'], inplace=True)
+        df['manufacturer'] = df['model'].apply(lambda x: x.split()[0] if isinstance(x, str) else 'Outros')
         return df
     except FileNotFoundError:
         st.error("Erro: O arquivo 'vehicles_us.csv' não foi encontrado no diretório raiz.")
@@ -36,113 +46,174 @@ def load_data():
 
 car_data = load_data()
 
+
 # --- Título Principal ---
-st.title("🚗 Dashboard de Análise de Vendas de Carros")
-st.write("Projeto do Sprint 5 - Combinando os requisitos do bootcamp com um Chatbot de IA.")
+st.title("🚗 Analista Automotivo IA")
+st.write("Projeto do Sprint 5 - Dashboard com Tool Calling Agent do LangChain e Gemini Flash 2.5")
+
+# --------------------------------------------------------
+# CRIAR A FERRAMENTA CUSTOMIZADA COM IA
+# --------------------------------------------------------
+
+@tool
+def PythonCodeExecutor(code: str) -> str:
+    """
+    Execute Python code for data analysis on DataFrame 'df'.
+    CRITICAL: You MUST use the actual DataFrame 'df' - do NOT create fake data.
+    Always verify results with actual data from df.
+    Exemple: print(df['price'].mean())
+    """
+    try:
+        old_stdout = sys.stdout
+        redirected_output = sys.stdout = io.StringIO()
+        
+        global car_data
+        df = car_data.copy()  # Use copy to prevent modifications
+        
+        # Validate code doesn't create fake data
+        if 'pd.DataFrame' in code and '{' in code:
+            return "ERROR: Do NOT create fake DataFrames. Use the existing 'df' variable only."
+
+        exec(code, {'df': df, 'pd': pd}, {})
+        
+        sys.stdout = old_stdout
+        output = redirected_output.getvalue()
+        
+        # Check if output is empty
+        if not output.strip():
+            return "ERROR: No output generated. Make sure to use print() to display results."
+                
+        return output
+    
+    except Exception as e:
+        sys.stdout = old_stdout
+        return f"Erro: {e}"
+
+tools = [PythonCodeExecutor]
+
+
+# --- Renderização do App ---
 
 if car_data is not None:
+    
     # --- Criar as Abas ---
     tab1, tab2, tab3 = st.tabs([
         "Projeto do Bootcamp (Obrigatório)", 
-        "Bônus: Chat com IA (Avançado)",
+        "Bônus: Chat com IA (Agent Executor)",
         "Ver Dados Brutos"
     ])
 
+    # --------------------------------------------------------
     # --- Aba 1: Projeto do Bootcamp (Obrigatório) ---
+    # --------------------------------------------------------
     with tab1:
         st.header("Análise Exploratória com Plotly Express")
         st.markdown("Esta aba cumpre todos os requisitos do Sprint 5.")
         
         st.divider()
-
-        # 1. Histograma (com botão)
-        st.subheader("Histograma de Quilometragem (Odometer)")
-        hist_button = st.button('Construir histograma')
-        if hist_button:
-            st.write('Criando um histograma para a coluna "odometer"')
+        st.subheader("1. Histograma de Quilometragem")
+        if st.button('Construir Histograma', key='hist_btn'):
             fig_hist = px.histogram(car_data, x="odometer", title="Distribuição de Quilometragem")
             st.plotly_chart(fig_hist, use_container_width=True)
 
         st.divider()
-
-        # 2. Gráfico de Dispersão (com botão)
-        st.subheader("Gráfico de Dispersão: Preço vs. Quilometragem")
-        scatter_button = st.button('Construir gráfico de dispersão')
-        if scatter_button:
-            st.write('Criando um gráfico de dispersão para "price" vs "odometer"')
+        st.subheader("2. Gráfico de Dispersão: Preço vs. Quilometragem")
+        if st.button('Construir Gráfico de Dispersão', key='scatter_btn'):
             fig_scatter = px.scatter(car_data, x="odometer", y="price", title="Preço vs. Quilometragem")
             st.plotly_chart(fig_scatter, use_container_width=True)
-            
-        st.divider()
-            
-        # 3. Desafio Opcional (Checkbox)
-        st.subheader("Desafio Opcional: Análise por Condição")
-        st.write("Veja a distribuição de quilometragem por condição do veículo.")
-        build_hist_condition = st.checkbox('Construir histograma por condição')
-        
-        if build_hist_condition:
-            st.write('Criando um histograma de "odometer" por "condition"')
-            fig_hist_cond = px.histogram(car_data, 
-                                         x="odometer", 
-                                         color="condition", 
-                                         title="Histograma de Quilometragem por Condição")
-            st.plotly_chart(fig_hist_cond, use_container_width=True)
 
-
-    # --- Aba 2: Bônus - Chat com IA ---
+    # --------------------------------------------------------
+    # --- Aba 2: Bônus - Chat com IA (Agent Executor) ---
+    # --------------------------------------------------------
     with tab2:
-        st.header("Auto-Analista (IA)")
-        st.write("Faça uma pergunta em linguagem natural sobre os dados.")
+        st.header("Consultor de Dados Veiculares 🧠")
+        st.markdown("Analise qualquer métrica: a IA executa código Python (usando 'df').")
 
         if not IA_DISPONIVEL:
-            st.warning("As bibliotecas de IA (langchain, etc.) não estão instaladas. A Aba de IA está desativada.")
-            st.code("pip install langchain langchain-google-genai langchain-experimental")
+            st.warning("As bibliotecas do LangChain não foram instaladas corretamente. A Aba de IA está desativada.")
+            st.info("Execute a reinstalação estruturada no terminal.")
+
         elif "GOOGLE_API_KEY" not in st.secrets:
             st.warning("Chave da API do Google não encontrada.")
-            st.write("Para usar esta aba, por favor, adicione sua `GOOGLE_API_KEY` ao arquivo `.streamlit/secrets.toml`.")
+            st.write("Por favor, adicione sua `GOOGLE_API_KEY` ao arquivo `.streamlit/secrets.toml`.")
         else:
-            # Configurar o LLM
-            llm = ChatGoogleGenerativeAI(model="gemini-pro", 
-                                         google_api_key=st.secrets["GOOGLE_API_KEY"],
-                                         temperature=0,
-                                         convert_system_message_to_human=True)
-            
-            # Criar o Agente
-            agent = create_pandas_dataframe_agent(llm, 
-                                                  car_data, 
-                                                  verbose=True,
-                                                  allow_dangerous_code=True)
-            
-            # Inicializar o histórico do chat
-            if "chat_messages" not in st.session_state:
-                st.session_state.chat_messages = []
+            try:
+                # Configure LLM
+                model = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-flash", 
+                    google_api_key=st.secrets["GOOGLE_API_KEY"],
+                    temperature=0
+                )
+                
+                # Create Agent
+                agent = create_agent(
+                    model=model,
+                    tools=tools,
+                    system_prompt=system_prompt
+                )
+                
+                # Initialize chat history
+                if "chat_messages_executor" not in st.session_state:
+                    st.session_state.chat_messages_executor = []
 
-            # Exibir mensagens
-            for message in st.session_state.chat_messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
+                # Display messages from history
+                for message in st.session_state.chat_messages_executor:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
 
-            # Input do usuário
-            if prompt := st.chat_input("Qual o preço médio por marca?"):
-                st.chat_message("user").markdown(prompt)
-                st.session_state.chat_messages.append({"role": "user", "content": prompt})
+                # User input
+                if user_input := st.chat_input("Ex: Qual o preço médio por fabricante?"):
+                    st.chat_message("user").markdown(user_input)
+                    st.session_state.chat_messages_executor.append({"role": "user", "content": user_input})
 
-                try:
-                    # Executar o agente
-                    with st.spinner("A IA está pensando..."):
-                        response = agent.invoke(prompt)
-                        ai_response = response['output']
-                    
-                    st.chat_message("assistant").markdown(ai_response)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": ai_response})
-                except Exception as e:
-                    st.error(f"Erro ao processar a pergunta: {e}")
-                    st.session_state.chat_messages.append({"role": "assistant", "content": f"Desculpe, tive um erro: {e}"})
+                    with st.chat_message("assistant"):
+                        message_placeholder = st.empty()
 
+                        try:
+                            with st.spinner("Processando sua solicitação..."):
+                                response = agent.invoke({"messages": st.session_state.chat_messages_executor})
+
+                            # Check for malformed call
+                            if response["messages"][-1].response_metadata.get('finish_reason') == 'MALFORMED_FUNCTION_CALL':
+                                message_placeholder.empty()
+                                st.error("O modelo teve dificuldade em processar sua solicitação. Tente reformular.")
+                                st.stop()    
+
+                            # Extract AI response
+                            ai_content = response["messages"][-1].content
+
+                            if isinstance(ai_content, list) and len(ai_content) > 0:
+                                text_content = ai_content[0].get('text', '')
+                            else:
+                                text_content = ai_content
+
+                            # DEBUG
+                            with st.expander("🔍 Debug: Ver código executado"):
+                                st.code(str(response), language="python")
+
+                            # Display text only
+                            message_placeholder.markdown(text_content)
+                            st.session_state.chat_messages_executor.append({
+                                "role": "assistant",
+                                "content": text_content
+                            })                            
+
+                        except Exception as e:
+                            message_placeholder.empty()
+                            st.error(f"Erro durante o processamento: {str(e)}")
+                            st.write("Detalhes do erro:", e)
+
+            except Exception as e:
+                st.error(f"Erro ao inicializar o Agente: {e}")
+
+    # --------------------------------------------------------
     # --- Aba 3: Ver Dados Brutos ---
+    # --------------------------------------------------------
     with tab3:
-        st.header("Dados Brutos")
+        st.header("Dados Brutos e Colunas")
         st.dataframe(car_data)
+        st.subheader("Colunas Disponíveis para Análise:")
+        st.write(list(car_data.columns))
 
 else:
     st.info("Aguardando o arquivo 'vehicles_us.csv' para iniciar o aplicativo.")

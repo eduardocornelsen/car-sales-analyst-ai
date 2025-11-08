@@ -10,7 +10,7 @@ Este projeto de bootcamp fornece uma análise avançada de dados de vendas de ca
 ![car-sales-cover](https://github.com/user-attachments/assets/1197e0f4-3d48-4cac-bb2f-101d5bfcc0fe)
 
 
-<a href="https://car-sales-analyst-ai.onrender.com" style="text-decoration: none;">
+<a href="https://car-sales-analyst-ai.streamlit.app/" style="text-decoration: none;">
   <img src="https://img.shields.io/badge/Teste%20o%20App%20ao%20Vivo%20-E37400?style=for-the-badge&logo=rocket&logoColor=FFFFFF" 
     alt="View Live App" 
     style="border: none; height: 35px; margin-top:20px; margin-bottom: 35px;">
